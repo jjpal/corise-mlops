@@ -1,3 +1,8 @@
+# MLOps: From Models to Production
+
+### A code repo for the [MLOps: From Models to Production] (https://corise.com/course/mlops)
+
+
 ## Introduction
 
 In the project this week, we will focus on model deployment for the news classification model that we trained in week 1, and evaluated in week 2.
