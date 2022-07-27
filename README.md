@@ -1,6 +1,6 @@
 # MLOps: From Models to Production
 
-### A code repo for the [MLOps: From Models to Production] (https://corise.com/course/mlops)
+### Week 3 starter project repo for the [MLOps: From Models to Production] (https://corise.com/course/mlops)
 
 
 ## Introduction
