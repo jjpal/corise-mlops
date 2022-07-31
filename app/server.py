@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from loguru import logger
 import joblib
 import json
+import datetime
 
 from sentence_transformers import SentenceTransformer
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -162,17 +163,18 @@ def predict(request: PredictRequest):
         }
         3. Construct an instance of `PredictResponse` and return
     """
-    
+    logw_time = datetime.datetime.now()
     prediction = data['model'].predict_proba(request.description)
+    latency = (datetime.datetime.now() - logw_time).total_seconds() * 1000
 	
     to_log = {
-	        'timestamp': ' ',
+	        'timestamp': logw_time.strftime("%Y:%m:%d %H:%M:%S"),
             'request': request.dict(),
             'prediction': prediction,
-            'latency': ' '
+            'latency': str(latency) + " ms"
 	}
 	
- #   logger_info(to_log)
+ ###   logger_info(to_log)
     data['logger'].write(json.dumps(to_log) + "\n")
     data['logger'].flush()
     
