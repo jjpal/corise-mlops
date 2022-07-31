@@ -62,17 +62,19 @@ class NewsCategoryClassifier:
         """
 		# 1 - Load the sentence transformer model and initialize the `featurizer`
         featurizer = TransformerFeaturizer(
-           dim = config['featurizer']['sentence_transformer_embedding_dim'],
-           sentence_transformer_model = SentenceTransformer(f"sentence-transformers/{config['featurizer']['sentence_transformer_model']}")
-		   )
-		   
+        dim = config['featurizer']['sentence_transformer_embedding_dim'],
+        sentence_transformer_model = SentenceTransformer(f"sentence-transformers/{config['featurizer']['sentence_transformer_model']}")
+		)
+		
 		# 2 -  Load the serialized model into memory and initialize `model
         model = joblib.load(GLOBAL_CONFIG["model"]["classifier"]["serialized_model_path"])
-		   		   
+       	   
         self.pipeline = Pipeline([
             ('transformer_featurizer', featurizer),
             ('classifier', model)
         ])
+
+        self.classes = model.classes_  
 
     def predict_proba(self, model_input: dict) -> dict:
         """
@@ -90,8 +92,8 @@ class NewsCategoryClassifier:
         """
 		
         predictions = self.pipeline.predict_proba([model_input])
-        classes_to_probs = dict(zip(self.classes, predictions[0].tolist()))
-		
+        classes_to_probs = dict(zip(self.classes, predictions[0].tolist()))	
+
         return classes_to_probs
 
     def predict_label(self, model_input: dict) -> str:
@@ -166,11 +168,11 @@ def predict(request: PredictRequest):
     to_log = {
 	        'timestamp': ' ',
             'request': request.dict(),
-            'prediction': preiction,
+            'prediction': prediction,
             'latency': ' '
 	}
 	
-    logger_info(to_log)
+ #   logger_info(to_log)
     data['logger'].write(json.dumps(to_log) + "\n")
     data['logger'].flush()
     
