@@ -60,19 +60,15 @@ class NewsCategoryClassifier:
         1. Load the sentence transformer model and initialize the `featurizer` of type `TransformerFeaturizer` (Hint: revisit Week 1 Step 4)
         2. Load the serialized model as defined in GLOBAL_CONFIG['model'] into memory and initialize `model`
         """
-		
 		# 1 - Load the sentence transformer model and initialize the `featurizer`
-		
         featurizer = TransformerFeaturizer(
-           dim = config['model']['featurizer']['sentemce_transformer_embedding_dim'],
-		   sentence_transformer_model = SentenceTransformer(f"sentence_transformers/{config['model']['featurizer']['sentence_transformer_model']}")
+           dim = config['featurizer']['sentence_transformer_embedding_dim'],
+           sentence_transformer_model = SentenceTransformer(f"sentence-transformers/{config['featurizer']['sentence_transformer_model']}")
 		   )
 		   
-		# 2 -  Load the serialized model into memory and initialize `model 
-		
-		model = joblib.load(GLOBAL_CONFIG["model"]["classifier"]["serialized_model_path"])
-		   
-		   
+		# 2 -  Load the serialized model into memory and initialize `model
+        model = joblib.load(GLOBAL_CONFIG["model"]["classifier"]["serialized_model_path"])
+		   		   
         self.pipeline = Pipeline([
             ('transformer_featurizer', featurizer),
             ('classifier', model)
@@ -93,8 +89,8 @@ class NewsCategoryClassifier:
         }
         """
 		
-		predictions = self.pipeline.predict_proba([model_input])
-		classes_to_probs = dict(zip(self.classes, predictions[0].tolist()))
+        predictions = self.pipeline.predict_proba([model_input])
+        classes_to_probs = dict(zip(self.classes, predictions[0].tolist()))
 		
         return classes_to_probs
 
@@ -107,8 +103,7 @@ class NewsCategoryClassifier:
 
         Output format: predicted label for the model input
         """
-		
-	    prediction = self.pipeline.predict([model_input])
+        prediction = self.pipeline.predict([model_input])
 		
         return prediction[0] # prediction with highest probability
 
@@ -128,10 +123,10 @@ def startup_event():
         store them as global variables
     """
 	# 2 - initializes the NewsCategoryClassifier 
-	data['model'] = NewsCategoryClassifier(GLOBAL_CONFIG['model'])
-		
-	# 3 - open output file to write logs
-	data['logger'] = open(GLOBAL_CONFIG['service']['log_destination'], 'w', encoding='utf-8')
+    data['model'] = NewsCategoryClassifier(GLOBAL_CONFIG['model'])
+    
+    # 3 - open output file to write logs
+    data['logger'] = open(GLOBAL_CONFIG['service']['log_destination'], 'w', encoding='utf-8')
     logger.info("Setup completed")
 
 
@@ -144,10 +139,9 @@ def shutdown_event():
         2. Any other cleanups
     """
 	
-	data['logger'].flush() # 1
-	data['logger'].close() 
+    data['logger'].flush() # 1
+    data['logger'].close() 
     logger.info("Shutting down application")
-
 
 @app.post("/predict", response_model=PredictResponse)
 def predict(request: PredictRequest):
@@ -166,20 +160,20 @@ def predict(request: PredictRequest):
         }
         3. Construct an instance of `PredictResponse` and return
     """
+    
+    prediction = data['model'].predict_proba(request.description)
 	
-	prediction = data['model'].predict_proba(request.description)
-	
-	to_log = {
+    to_log = {
 	        'timestamp': ' ',
             'request': request.dict(),
             'prediction': preiction,
             'latency': ' '
 	}
 	
-	logger_info(to_log)
-	data['logger'].write(json.dumps(to_log) + "\n")
-	data['logger'].flush()
-	
+    logger_info(to_log)
+    data['logger'].write(json.dumps(to_log) + "\n")
+    data['logger'].flush()
+    
     return {"prediction":prediction}
 
 
