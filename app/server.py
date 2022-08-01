@@ -2,8 +2,9 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from loguru import logger
 import joblib
-import json
+
 import datetime
+import json
 
 from sentence_transformers import SentenceTransformer
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -61,21 +62,20 @@ class NewsCategoryClassifier:
         1. Load the sentence transformer model and initialize the `featurizer` of type `TransformerFeaturizer` (Hint: revisit Week 1 Step 4)
         2. Load the serialized model as defined in GLOBAL_CONFIG['model'] into memory and initialize `model`
         """
-		# 1 - Load the sentence transformer model and initialize the `featurizer`
-        featurizer = TransformerFeaturizer(
-        dim = config['featurizer']['sentence_transformer_embedding_dim'],
-        sentence_transformer_model = SentenceTransformer(f"sentence-transformers/{config['featurizer']['sentence_transformer_model']}")
-		)
-		
+
+        sentence_transformer_model = SentenceTransformer('sentence-transformers/{model}'.format(model=config["model"]["featurizer"]["sentence_transformer_model"]))
+        featurizer = TransformerFeaturizer(config["model"]["featurizer"]["sentence_transformer_embedding_dim"], sentence_transformer_model)
+
 		# 2 -  Load the serialized model into memory and initialize `model
-        model = joblib.load(GLOBAL_CONFIG["model"]["classifier"]["serialized_model_path"])
-       	   
+        model = joblib.load(config["model"]["classifier"]["serialized_model_path"])
+
+        self.classes = model.classes_ 
+
         self.pipeline = Pipeline([
             ('transformer_featurizer', featurizer),
             ('classifier', model)
         ])
 
-        self.classes = model.classes_  
 
     def predict_proba(self, model_input: dict) -> dict:
         """
@@ -106,6 +106,7 @@ class NewsCategoryClassifier:
 
         Output format: predicted label for the model input
         """
+
         prediction = self.pipeline.predict([model_input])
 		
         return prediction[0] # prediction with highest probability
@@ -126,10 +127,12 @@ def startup_event():
         store them as global variables
     """
 	# 2 - initializes the NewsCategoryClassifier 
-    data['model'] = NewsCategoryClassifier(GLOBAL_CONFIG['model'])
     
+    data["model"] = NewsCategoryClassifier(GLOBAL_CONFIG)
+
     # 3 - open output file to write logs
-    data['logger'] = open(GLOBAL_CONFIG['service']['log_destination'], 'w', encoding='utf-8')
+    data["logger"] = open(GLOBAL_CONFIG["service"]["log_destination"], mode='a', encoding='utf-8')
+
     logger.info("Setup completed")
 
 
@@ -142,8 +145,8 @@ def shutdown_event():
         2. Any other cleanups
     """
 	
-    data['logger'].flush() # 1
-    data['logger'].close() 
+    data["logger"].flush() 
+    data["logger"].close() 
     logger.info("Shutting down application")
 
 @app.post("/predict", response_model=PredictResponse)
@@ -165,6 +168,7 @@ def predict(request: PredictRequest):
     """
     logw_time = datetime.datetime.now()
     prediction = data['model'].predict_proba(request.description)
+    pred_label = data['model'].predict_label(request.description)
     latency = (datetime.datetime.now() - logw_time).total_seconds() * 1000
 	
     to_log = {
@@ -174,11 +178,12 @@ def predict(request: PredictRequest):
             'latency': str(latency) + " ms"
 	}
 	
- ###   logger_info(to_log)
-    data['logger'].write(json.dumps(to_log) + "\n")
-    data['logger'].flush()
+    log_file = json.dumps(to_log)
+    log_write = data["logger"].write(log_file)
+    data["logger"].write("\n")
+    data["logger"].flush()
     
-    return {"prediction":prediction}
+    return PredictResponse(scores=prediction, label=pred_label)
 
 
 @app.get("/")
